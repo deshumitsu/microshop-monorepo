@@ -1,0 +1,5 @@
+Plaintext
+Venv/
+.idea/
+__pycache__/
+*.pyc

@@ -1,0 +1,4 @@
+Flask
+Requests
+Flake8
+pytest
