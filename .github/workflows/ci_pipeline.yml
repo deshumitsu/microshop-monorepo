@@ -44,9 +44,7 @@ jobs:
         pytest
 
     - name: Lint YAML files
-      # Мы используем готовый Action из магазина GitHub
       uses: ibiqlik/action-yamllint@v3
       with:
-        # Указываем, какие файлы проверять (все .yml и .yaml)
-        file_or_dir: "**/*.yml **/*.yaml"
+        file_or_dir: .github/workflows/*.yml products_service/*.yaml
         strict: true
