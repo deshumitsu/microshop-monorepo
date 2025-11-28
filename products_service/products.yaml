@@ -3,7 +3,7 @@
 currency: "USD"
 
 # Список товаров
-items
+items:
   - id: 1
     name: "Smartphone X"
     price: 699.99
