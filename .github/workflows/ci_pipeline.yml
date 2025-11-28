@@ -48,4 +48,5 @@ jobs:
       uses: ibiqlik/action-yamllint@v3
       with:
         # Указываем, какие файлы проверять (все .yml и .yaml)
-        file_extensions: 'yml,yaml'
+        file_or_dir: "**/*.yml **/*.yaml"
+        strict: true
