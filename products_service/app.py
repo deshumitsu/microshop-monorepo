@@ -1,15 +1,27 @@
 # Микросервис управления товарами
 
+import os
+import yaml
 from flask import Flask, jsonify
 
 app = Flask(__name__)
 
-# Данные товаров (в реальном приложении это была бы база данных)
-products = [
-    {"id": 1, "name": "Product A", "price": 10.0},
-    {"id": 2, "name": "Product B", "price": 20.0},
-    {"id": 3, "name": "Product C", "price": 15.5},
-]
+def load_products():
+    """Загружает список товаров из products.yaml"""
+    yaml_path = os.path.join(os.path.dirname(__file__), "products.yaml")
+
+    try:
+        with open(yaml_path, "r", encoding="utf-8") as file:
+            data = yaml.safe_load(file) or {}
+            return data.get("items", [])
+    except FileNotFoundError:
+        print("Файл products.yaml не найден")
+        return []
+    except yaml.YAMLError as e:
+        print(f"Ошибка в синтаксисе YAML: {e}")
+        return []
+
+products = load_products()
 
 @app.route('/products', methods=['GET'])
 def get_products():
@@ -19,7 +31,7 @@ def get_products():
 @app.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
     """Получить товар по ID"""
-    product = next((prod for prod in products if prod["id"] == product_id), None)
+    product = next((prod for prod in products if prod.get("id") == product_id), None)
     return jsonify(product) if product else ('Not Found', 404)
 
 if __name__ == '__main__':
