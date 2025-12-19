@@ -46,6 +46,7 @@ jobs:
 
       - name: Run Tests
         env:
+          PYTHONPATH ${{ github.workspace }}
           DB_SERVER: 127.0.0.1
           DB_DATABASE: MicroshopOrders
           DB_USER: sa
