@@ -1,54 +1,81 @@
-name: CI with Database
+name: CI/CD Pipeline (Test & Release)
 
-on: [push, pull_request]
+# Триггеры:
+# 1. На пуш в main (просто тесты)
+# 2. На создание тега v* (тесты + релиз)
+on:
+  push:
+    branches: ["main"]
+    tags:
+      - 'v*'  # Срабатывает на v1.0, v2.3.4 и т.д.
+  pull_request:
+    branches: ["main"]
 
 jobs:
-  integration-test:
-    runs-on: ubuntu-22.04
-
-    # Запускаем сервисный контейнер SQL Server
+  # --- РАБОТА 1: ТЕСТИРОВАНИЕ (Как в прошлой работе) ---
+  tests:
+    runs-on: ubuntu-latest
     services:
       sqlserver:
         image: mcr.microsoft.com/mssql/server:2019-latest
-        ports:
-          - 1433:1433
+        ports: [1433:1433]
         env:
           ACCEPT_EULA: Y
           SA_PASSWORD: TestPass123!
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Install ODBC Driver (Linux)
+      - name: Install ODBC & Python
         run: |
           curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-          # Автоматическое определение версии Ubuntu через $(lsb_release -rs):          
-          curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - run: pip install -r requirements.txt
+
+      - name: Wait & Init DB
+        run: |
+          sleep 15
+          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P TestPass123! -Q "CREATE DATABASE MicroshopOrders"
+          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -d MicroshopOrders -U sa -P TestPass123! -Q "CREATE TABLE Orders (id INT PRIMARY KEY IDENTITY(1,1), product_id INT, customer_id INT, quantity INT)"
+
+      - name: Run Tests
+        env:
+          DB_SERVER: 127.0.0.1
+          DB_DATABASE: MicroshopOrders
+          DB_USER: sa
+          DB_PASSWORD: TestPass123!
+        run: pytest tests/
+
+  # --- РАБОТА 2: СБОРКА И РЕЛИЗ (Новая часть) ---
+  build-and-release:
+    needs: tests  # Ждем, пока пройдут тесты!
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')  # Запускать ТОЛЬКО если это тег версии
+
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.9"
 
-      - name: Install Dependencies
-        run: pip install -r requirements.txt
+      # 1. Запускаем наш скрипт упаковки
+      - name: Build Package (Zip)
+        run: python build_package.py
 
-      - name: Wait for SQL Server
-        run: sleep 15
-
-      - name: Create Database
-        run: |
-          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P TestPass123! -Q "CREATE DATABASE MicroshopOrders"
-          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -d MicroshopOrders -U sa -P TestPass123! -Q "CREATE TABLE Orders (id INT PRIMARY KEY IDENTITY(1,1), product_id INT, customer_id INT, quantity INT)"
-
-      - name: Run Tests
+      # 2. Создаем Релиз на GitHub
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.zip
         env:
-          PYTHONPATH: ${{ github.workspace }}
-          DB_SERVER: 127.0.0.1
-          DB_DATABASE: MicroshopOrders
-          DB_USER: sa
-          DB_PASSWORD: TestPass123!
-        run: pytest tests/
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
