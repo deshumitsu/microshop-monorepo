@@ -26,12 +26,24 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install ODBC & Python
+      - name: Install ODBC + sqlcmd
         run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
           sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev
+          sudo apt-get install -y curl ca-certificates gnupg apt-transport-https
+
+          # Microsoft repo key
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+
+          # Repo (для Ubuntu runner; 22.04 максимально стабильно)
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
+
+          sudo apt-get update
+
+          # ODBC driver + sqlcmd tools
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev mssql-tools
+
+          # Добавляем sqlcmd в PATH
+          echo "/opt/mssql-tools/bin" >> $GITHUB_PATH
 
       - uses: actions/setup-python@v4
         with:
