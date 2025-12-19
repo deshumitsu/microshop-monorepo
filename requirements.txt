@@ -1,5 +1,11 @@
 Flask
-Requests
-Flake8
+fastapi
+uvicorn
+httpx
+flasgger
+pyodbc
+python-dotenv
 pytest
+flake8
+requests
 PyYAML
