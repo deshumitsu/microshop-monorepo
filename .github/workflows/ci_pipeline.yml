@@ -5,11 +5,11 @@ name: CI/CD Pipeline (Test & Release)
 # 2. На создание тега v* (тесты + релиз)
 on:
   push:
-    branches: ["main"]
+    branches: ["master"]
     tags:
       - 'v*'  # Срабатывает на v1.0, v2.3.4 и т.д.
   pull_request:
-    branches: ["main"]
+    branches: ["master"]
 
 jobs:
   # --- РАБОТА 1: ТЕСТИРОВАНИЕ (Как в прошлой работе) ---
